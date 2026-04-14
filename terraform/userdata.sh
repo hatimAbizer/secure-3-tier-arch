@@ -9,6 +9,11 @@ dnf clean all
 dnf update -y
 dnf install -y aws-cli unzip
 
+# Ensure SSM agent is installed and running (needed for CI/CD deployment)
+dnf install -y amazon-ssm-agent
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
+
 curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
 dnf install -y nodejs
 npm install -g pm2
