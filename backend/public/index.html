@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Todos</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f5f0eb;
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 64px 24px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+    }
+
+    /* ── Header ── */
+    .header {
+      margin-bottom: 48px;
+    }
+
+    .title {
+      font-family: 'Instrument Serif', serif;
+      font-size: 52px;
+      color: #1a1208;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .title em {
+      font-style: italic;
+      color: #8b6a3e;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #9e8f7e;
+      font-weight: 300;
+      letter-spacing: 0.3px;
+    }
+
+    /* ── Add form ── */
+    .add-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+
+    .add-input {
+      flex: 1;
+      padding: 13px 16px;
+      border: 1.5px solid #ddd5c8;
+      border-radius: 10px;
+      background: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: #1a1208;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .add-input::placeholder { color: #bfb3a5; }
+
+    .add-input:focus {
+      border-color: #8b6a3e;
+    }
+
+    .add-btn {
+      padding: 13px 22px;
+      background: #1a1208;
+      color: #f5f0eb;
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .add-btn:hover    { background: #2e1f0e; }
+    .add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Filters ── */
+    .filters {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+    }
+
+    .filter-btn {
+      padding: 5px 14px;
+      border-radius: 100px;
+      border: 1.5px solid transparent;
+      background: transparent;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: #9e8f7e;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .filter-btn:hover { color: #1a1208; }
+
+    .filter-btn.active {
+      background: #fff;
+      border-color: #ddd5c8;
+      color: #1a1208;
+      font-weight: 500;
+    }
+
+    /* ── Todo list ── */
+    .todo-list {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      background: #fff;
+      border-radius: 10px;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .todo-item:hover {
+      border-color: #e8dfd5;
+    }
+
+    /* Checkbox */
+    .check-btn {
+      width: 22px; height: 22px;
+      min-width: 22px;
+      border-radius: 50%;
+      border: 1.5px solid #c9bcaf;
+      background: transparent;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+      transition: all 0.15s;
+      color: transparent;
+    }
+
+    .check-btn:hover {
+      border-color: #8b6a3e;
+      background: #f5ede2;
+      color: #8b6a3e;
+    }
+
+    .todo-item.done .check-btn {
+      background: #1a1208;
+      border-color: #1a1208;
+      color: #f5f0eb;
+    }
+
+    .todo-title {
+      flex: 1;
+      font-size: 15px;
+      color: #1a1208;
+      font-weight: 400;
+      transition: all 0.15s;
+    }
+
+    .todo-item.done .todo-title {
+      color: #bfb3a5;
+      text-decoration: line-through;
+    }
+
+    .todo-date {
+      font-size: 11px;
+      color: #c9bcaf;
+      white-space: nowrap;
+    }
+
+    .delete-btn {
+      width: 28px; height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: #c9bcaf;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0;
+      transition: all 0.15s;
+    }
+
+    .todo-item:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { background: #fdf0f0; color: #e06060; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: #bfb3a5;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    /* ── Count ── */
+    .count {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #bfb3a5;
+      text-align: right;
+    }
+
+    /* ── Loading / Error ── */
+    .status {
+      text-align: center;
+      padding: 48px;
+      color: #9e8f7e;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ─────────────────────────────────────────────
+    // All API calls go through these functions.
+    // The base URL is empty — meaning requests go to
+    // the same host that served this HTML file.
+    // That host is your Express backend.
+    //
+    // Browser → /api/todos → Express → RDS MySQL
+    //
+    // The browser NEVER knows the RDS hostname.
+    // It only knows the ALB DNS name.
+    // ─────────────────────────────────────────────
+
+    const API = {
+      getTodos:    ()         => fetch('/api/todos').then(r => r.json()),
+      addTodo:     (title)    => fetch('/api/todos', {
+                                  method:  'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body:    JSON.stringify({ title }),
+                                }).then(r => r.json()),
+      toggleTodo:  (id)       => fetch(`/api/todos/${id}`, { method: 'PATCH' }).then(r => r.json()),
+      deleteTodo:  (id)       => fetch(`/api/todos/${id}`, { method: 'DELETE' }).then(r => r.json()),
+    };
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function App() {
+      const [todos,   setTodos]   = useState([]);
+      const [input,   setInput]   = useState('');
+      const [filter,  setFilter]  = useState('all');
+      const [loading, setLoading] = useState(true);
+      const [error,   setError]   = useState(null);
+      const [adding,  setAdding]  = useState(false);
+
+      // Load todos from the backend on mount
+      useEffect(() => {
+        API.getTodos()
+          .then(data  => { setTodos(data); setLoading(false); })
+          .catch(()   => { setError('Could not connect to server.'); setLoading(false); });
+      }, []);
+
+      async function handleAdd(e) {
+        e.preventDefault();
+        if (!input.trim()) return;
+        setAdding(true);
+        const newTodo = await API.addTodo(input.trim());
+        setTodos(prev => [newTodo, ...prev]);
+        setInput('');
+        setAdding(false);
+      }
+
+      async function handleToggle(id) {
+        const updated = await API.toggleTodo(id);
+        setTodos(prev => prev.map(t => t.id === id ? updated : t));
+      }
+
+      async function handleDelete(id) {
+        await API.deleteTodo(id);
+        setTodos(prev => prev.filter(t => t.id !== id));
+      }
+
+      const visible = todos.filter(t => {
+        if (filter === 'active')    return !t.completed;
+        if (filter === 'completed') return  t.completed;
+        return true;
+      });
+
+      const doneCount = todos.filter(t => t.completed).length;
+
+      return (
+        <div className="container">
+
+          <div className="header">
+            <h1 className="title">My <em>Todos</em></h1>
+            <p className="subtitle">
+              {loading ? 'Loading...' : `${todos.length - doneCount} remaining · connected to RDS MySQL`}
+            </p>
+          </div>
+
+          <form className="add-form" onSubmit={handleAdd}>
+            <input
+              className="add-input"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder="Add a new task..."
+              disabled={adding}
+            />
+            <button className="add-btn" type="submit" disabled={adding || !input.trim()}>
+              {adding ? '...' : 'Add'}
+            </button>
+          </form>
+
+          <div className="filters">
+            {['all', 'active', 'completed'].map(f => (
+              <button
+                key={f}
+                className={`filter-btn ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {loading && <div className="status">Loading todos...</div>}
+          {error   && <div className="status">{error}</div>}
+
+          {!loading && !error && (
+            <div className="todo-list">
+              {visible.length === 0
+                ? <div className="empty">Nothing here yet.</div>
+                : visible.map(todo => (
+                    <div key={todo.id} className={`todo-item ${todo.completed ? 'done' : ''}`}>
+
+                      <button className="check-btn" onClick={() => handleToggle(todo.id)}>
+                        ✓
+                      </button>
+
+                      <span className="todo-title">{todo.title}</span>
+
+                      <span className="todo-date">{formatDate(todo.created_at)}</span>
+
+                      <button className="delete-btn" onClick={() => handleDelete(todo.id)}>
+                        ×
+                      </button>
+
+                    </div>
+                  ))
+              }
+            </div>
+          )}
+
+          {!loading && todos.length > 0 && (
+            <p className="count">{doneCount} of {todos.length} completed</p>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
