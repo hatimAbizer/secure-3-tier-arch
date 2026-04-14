@@ -114,7 +114,7 @@ resource "aws_autoscaling_group" "app" {
   desired_capacity          = var.asg_desired_capacity
   vpc_zone_identifier       = [aws_subnet.public_a.id, aws_subnet.public_b.id]
   target_group_arns         = [aws_lb_target_group.app.arn]
-  health_check_type         = "EC2"
+  health_check_type         = "ELB"
   health_check_grace_period = 180  # Give the app 3 min to start before health checks begin
 
   launch_template {
