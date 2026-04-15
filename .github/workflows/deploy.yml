@@ -52,20 +52,21 @@ jobs:
           echo "ids=$IDS" >> $GITHUB_OUTPUT
           echo "Deploying to: $IDS"
 
-      # Send a deploy command to EC2 via SSM (no SSH needed).
-      # EC2 downloads the zip from S3, extracts it, installs
-      # dependencies, and restarts the app using PM2.
-      - name: Deploy to EC2
-        run: |
-          aws ssm send-command \
-            --instance-ids ${{ steps.instances.outputs.ids }} \
-            --document-name "AWS-RunShellScript" \
-            --parameters 'commands=[
-              "aws s3 cp s3://${{ secrets.S3_BUCKET }}/app.zip /tmp/app.zip",
-              "unzip -o /tmp/app.zip -d /home/ec2-user/app",
-              "cd /home/ec2-user/app && npm install --production",
-              "chown -R ec2-user:ec2-user /home/ec2-user/app",
-              "systemctl restart app",
-              "sleep 5 && curl -f http://localhost:8080/health || exit 1"
-            ]'
-          echo "Deploy command sent. App will be live in ~30 seconds."
+       # Send a deploy command to EC2 via SSM (no SSH needed).
+       # EC2 downloads the zip from S3, extracts it, installs
+       # dependencies, and restarts the app using systemd.
+       - name: Deploy to EC2
+         run: |
+           aws ssm send-command \
+             --instance-ids ${{ steps.instances.outputs.ids }} \
+             --document-name "AWS-RunShellScript" \
+             --parameters 'commands=[
+               "rm -rf /home/ec2-user/app/* 2>/dev/null || true",
+               "aws s3 cp s3://${{ secrets.S3_BUCKET }}/app.zip /tmp/app.zip",
+               "unzip -o /tmp/app.zip -d /home/ec2-user/app",
+               "chown -R ec2-user:ec2-user /home/ec2-user/app",
+               "cd /home/ec2-user/app && npm install --production",
+               "systemctl restart app",
+               "sleep 5 && curl -f http://localhost:8080/health || exit 1"
+             ]'
+           echo "Deploy command sent. App will be live in ~30 seconds."
