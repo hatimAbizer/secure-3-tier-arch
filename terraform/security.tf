@@ -71,31 +71,15 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
   ip_protocol                  = "tcp"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_maintenance_ssh" {
-  security_group_id = aws_security_group.app.id
-  from_port         = 22
-  to_port           = 22
-  ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0" # In prod, replace with YOUR_IP/32
-}
+# resource "aws_vpc_security_group_ingress_rule" "app_maintenance_ssh" {
+#   security_group_id = aws_security_group.app.id
+#   from_port         = 22
+#   to_port           = 22
+#   ip_protocol       = "tcp"
+#   cidr_ipv4         = "0.0.0.0/0" # In prod, replace with YOUR_IP/32
+# }
 
-# Allow UDP DNS queries (Standard DNS)
-resource "aws_vpc_security_group_egress_rule" "app_outbound_dns_udp" {
-  security_group_id = aws_security_group.app.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 53
-  to_port           = 53
-  ip_protocol       = "udp"
-}
 
-# Allow TCP DNS queries (Large DNS responses)
-resource "aws_vpc_security_group_egress_rule" "app_outbound_dns_tcp" {
-  security_group_id = aws_security_group.app.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 53
-  to_port           = 53
-  ip_protocol       = "tcp"
-}
 # ── KMS Key ────────────────────────────────────────────────
 resource "aws_kms_key" "main" {
   description             = "Encrypts SSM secrets and RDS storage"
@@ -166,6 +150,16 @@ resource "aws_iam_role_policy" "s3_artifact" {
       }
     ]
   })
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = [
+    aws_route_table.public.id,   # or private if you have one
+  ]
 }
 
 # CloudWatch logs and metrics
