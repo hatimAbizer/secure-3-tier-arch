@@ -107,14 +107,14 @@ resource "aws_kms_key" "main" {
 }
 
 resource "aws_kms_alias" "main" {
-  name          = "alias/secure-3tier-app"
+  name          = "alias/secure-3tier-app${var.suffix}"
   target_key_id = aws_kms_key.main.id
 }
 
 # ── IAM Role for EC2 ───────────────────────────────────────
 # Least privilege: only what the instance actually needs.
 resource "aws_iam_role" "ec2_role" {
-  name = "ec2-app-role"
+  name = "ec2-app-role${var.suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -208,7 +208,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 # ── IAM Role for VPC Flow Logs ────────────────────────────
 resource "aws_iam_role" "flow_logs_role" {
-  name = "vpc-flow-logs-role"
+  name = "vpc-flow-logs-role${var.suffix}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -236,7 +236,7 @@ resource "aws_iam_role_policy" "flow_logs_policy" {
 # CI/CD uploads the zipped app here.
 # EC2 downloads it during deployment.
 resource "aws_s3_bucket" "artifacts" {
-  bucket        = "secure-3tier-artifacts-${data.aws_caller_identity.current.account_id}"
+  bucket        = "secure-3tier-artifacts${var.suffix}-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
   tags          = { Name = "app-artifacts" }
 }

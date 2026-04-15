@@ -101,7 +101,7 @@ resource "aws_ssm_parameter" "db_username" {
 # ============================================================
 
 resource "aws_db_subnet_group" "main" {
-  name        = "main-db-subnet-group"
+  name        = "main-db-subnet-group${var.suffix}"
   description = "Subnet group for RDS in private subnets"
   subnet_ids  = [
     aws_subnet.private_a.id,
@@ -110,7 +110,7 @@ resource "aws_db_subnet_group" "main" {
   ]
 
   tags = {
-    Name = "main-db-subnet-group"
+    Name = "main-db-subnet-group${var.suffix}"
   }
 }
 
@@ -126,7 +126,7 @@ resource "aws_db_subnet_group" "main" {
 
 resource "aws_db_instance" "main" {
   # --- Identity ---
-  identifier = "secure-3tier-db" # Name shown in AWS console
+  identifier = "secure-3tier-db${var.suffix}" # Name shown in AWS console
   db_name    = var.db_name        # The database to create inside MySQL
 
   # --- Engine ---
@@ -171,6 +171,6 @@ resource "aws_db_instance" "main" {
   # So you have a backup before destroying the DB
 
   tags = {
-    Name = "secure-3tier-mysql"
+    Name = "secure-3tier-mysql${var.suffix}"
   }
 }

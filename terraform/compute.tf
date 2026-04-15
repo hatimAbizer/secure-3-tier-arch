@@ -18,12 +18,12 @@ data "aws_ami" "amazon_linux" {
 # Public entry point. Internet → ALB → EC2.
 # Lives in both public subnets across 2 AZs.
 resource "aws_lb" "main" {
-  name               = "secure-3tier-alb"
+  name               = "secure-3tier-alb${var.suffix}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-  tags               = { Name = "secure-3tier-alb" }
+  tags               = { Name = "secure-3tier-alb${var.suffix}" }
 }
 
 # ── Target Group ───────────────────────────────────────────
@@ -31,7 +31,7 @@ resource "aws_lb" "main" {
 # ALB health-checks /health every 30s.
 # If an instance fails → ALB stops sending it traffic.
 resource "aws_lb_target_group" "app" {
-  name     = "app-target-group"
+  name     = "app-target-group${var.suffix}"
   port     = var.app_port
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -67,7 +67,7 @@ resource "aws_lb_listener" "http" {
 # userdata.sh installs Node.js and pulls secrets from SSM.
 # App code is deployed separately via the CI/CD pipeline.
 resource "aws_launch_template" "app" {
-  name_prefix   = "secure-3tier-app-"
+  name_prefix   = "secure-3tier-app${var.suffix}-"
   image_id      = data.aws_ami.amazon_linux.id
   instance_type = var.instance_type
 
@@ -108,7 +108,7 @@ resource "aws_launch_template" "app" {
 # health_check_type = "ELB" means if the app's /health
 # endpoint fails, ASG replaces the instance automatically.
 resource "aws_autoscaling_group" "app" {
-  name                      = "secure-3tier-asg"
+  name                      = "secure-3tier-asg${var.suffix}"
   min_size                  = var.asg_min_size
   max_size                  = var.asg_max_size
   desired_capacity          = var.asg_desired_capacity

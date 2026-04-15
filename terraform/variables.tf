@@ -3,7 +3,7 @@
 variable "aws_region" {
   description = "AWS region to deploy into"
   type        = string
-  default     = "ap-south-1"  # Change to your region
+  default     = "us-east-1"  # Change to your region
 }
 
 variable "vpc_cidr" {
@@ -75,4 +75,10 @@ variable "alarm_email" {
   description = "Your email — AWS will send a confirmation, click it or alarms won't work"
   type        = string
   default     = "hatimabizer01@gmail.com"
+}
+
+variable "suffix" {
+  description = "Suffix for resource names to avoid conflicts"
+  type        = string
+  default     = "-v2"
 }

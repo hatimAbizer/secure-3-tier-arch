@@ -22,7 +22,7 @@
 # ============================================================
 
 resource "aws_s3_bucket" "cloudtrail_logs" {
-  bucket        = "secure-3tier-cloudtrail-${data.aws_caller_identity.current.account_id}"
+  bucket        = "secure-3tier-cloudtrail${var.suffix}-${data.aws_caller_identity.current.account_id}"
   # Include account ID in bucket name — S3 names are globally unique
   # This prevents name conflicts with other AWS accounts
   force_destroy = true # Allow terraform destroy to delete the bucket
@@ -110,7 +110,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_logs" {
 # ============================================================
 
 resource "aws_cloudtrail" "main" {
-  name           = "secure-3tier-trail"
+  name           = "secure-3tier-trail${var.suffix}"
   s3_bucket_name = aws_s3_bucket.cloudtrail_logs.id
 
   include_global_service_events = true  # Capture IAM, STS events
@@ -145,7 +145,7 @@ resource "aws_cloudwatch_log_group" "cloudtrail" {
 
 # IAM role for CloudTrail to write to CloudWatch
 resource "aws_iam_role" "cloudtrail_cloudwatch_role" {
-  name = "cloudtrail-cloudwatch-role"
+  name = "cloudtrail-cloudwatch-role${var.suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
