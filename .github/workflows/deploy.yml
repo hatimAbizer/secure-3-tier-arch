@@ -63,7 +63,9 @@ jobs:
              --parameters 'commands=[
                "rm -rf /home/ec2-user/app/* 2>/dev/null || true",
                "aws s3 cp s3://${{ secrets.S3_BUCKET }}/app.zip /tmp/app.zip",
-               "unzip -o /tmp/app.zip -d /home/ec2-user/app",
+               "unzip -o /tmp/app.zip -d /tmp/app_extract",
+               "mv /tmp/app_extract/* /home/ec2-user/app/ 2>/dev/null; mv /tmp/app_extract/.* /home/ec2-user/app/ 2>/dev/null || true",
+               "rm -rf /tmp/app_extract",
                "chown -R ec2-user:ec2-user /home/ec2-user/app",
                "cd /home/ec2-user/app && npm install --production",
                "systemctl restart app",
