@@ -83,6 +83,7 @@ resource "aws_launch_template" "app" {
   user_data = base64encode(templatefile("${path.module}/userdata.sh", {
     region   = var.aws_region
     app_port = var.app_port
+    suffix   = var.suffix
   }))
 
   block_device_mappings {

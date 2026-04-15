@@ -212,7 +212,7 @@ resource "aws_flow_log" "main" {
 }
 
 resource "aws_cloudwatch_log_group" "flow_logs" {
-  name              = "/aws/vpc/flowlogs"
+  name              = "/aws/vpc/flowlogs${var.suffix}"
   retention_in_days = 30 # Keep logs for 30 days then auto-delete
 
   tags = {

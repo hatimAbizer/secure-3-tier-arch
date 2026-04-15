@@ -139,7 +139,7 @@ resource "aws_cloudtrail" "main" {
 }
 
 resource "aws_cloudwatch_log_group" "cloudtrail" {
-  name              = "/aws/cloudtrail/secure-3tier"
+  name              = "/aws/cloudtrail/secure-3tier${var.suffix}"
   retention_in_days = 30
 }
 

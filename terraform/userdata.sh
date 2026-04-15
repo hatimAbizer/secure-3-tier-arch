@@ -23,10 +23,10 @@ get_param() {
 }
 
 echo "Fetching secrets from SSM..."
-DB_HOST=$(get_param "/myapp/db/host")
-DB_NAME=$(get_param "/myapp/db/name")
-DB_USER=$(get_param "/myapp/db/username")
-DB_PASS=$(get_param "/myapp/db/password" "--with-decryption")
+DB_HOST=$(get_param "/myapp/db/host${suffix}")
+DB_NAME=$(get_param "/myapp/db/name${suffix}")
+DB_USER=$(get_param "/myapp/db/username${suffix}")
+DB_PASS=$(get_param "/myapp/db/password${suffix}" "--with-decryption")
 
 mkdir -p /home/ec2-user/app
 cat > /home/ec2-user/app/.env << EOF

@@ -53,11 +53,12 @@ resource "random_password" "db_password" {
 # ============================================================
 
 resource "aws_ssm_parameter" "db_password" {
-  name        = "/myapp/db/password"
+  name        = "/myapp/db/password${var.suffix}"
   description = "RDS MySQL master password"
   type        = "SecureString" # Encrypted with KMS
   value       = random_password.db_password.result
   key_id      = aws_kms_key.main.arn # Use our CMK, not AWS-managed key
+  overwrite   = true
 
   tags = {
     Name = "db-password"
@@ -65,10 +66,11 @@ resource "aws_ssm_parameter" "db_password" {
 }
 
 resource "aws_ssm_parameter" "db_host" {
-  name        = "/myapp/db/host"
+  name        = "/myapp/db/host${var.suffix}"
   description = "RDS endpoint hostname"
   type        = "String" # Not sensitive — just a hostname
   value       = aws_db_instance.main.address
+  overwrite   = true
   # This creates a circular dependency issue:
   # RDS needs to exist before we can store its address.
   # Terraform resolves this automatically by building
@@ -76,15 +78,17 @@ resource "aws_ssm_parameter" "db_host" {
 }
 
 resource "aws_ssm_parameter" "db_name" {
-  name  = "/myapp/db/name"
-  type  = "String"
-  value = var.db_name
+  name      = "/myapp/db/name${var.suffix}"
+  type      = "String"
+  value     = var.db_name
+  overwrite = true
 }
 
 resource "aws_ssm_parameter" "db_username" {
-  name  = "/myapp/db/username"
-  type  = "String"
-  value = var.db_username
+  name      = "/myapp/db/username${var.suffix}"
+  type      = "String"
+  value     = var.db_username
+  overwrite = true
 }
 
 

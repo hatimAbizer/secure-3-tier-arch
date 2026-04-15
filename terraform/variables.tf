@@ -80,5 +80,5 @@ variable "alarm_email" {
 variable "suffix" {
   description = "Suffix for resource names to avoid conflicts"
   type        = string
-  default     = "-v2"
+  default     = "-v3"
 }
