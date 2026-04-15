@@ -202,7 +202,7 @@ resource "aws_iam_role_policy_attachment" "ssm_core" {
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-app-instance-profile"
+  name = "ec2-app-instance-profile${var.suffix}"
   role = aws_iam_role.ec2_role.name
 }
 
