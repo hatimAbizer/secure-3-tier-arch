@@ -55,7 +55,7 @@ jobs:
        # Send a deploy command to EC2 via SSM (no SSH needed).
        # EC2 downloads the zip from S3, extracts it, installs
        # dependencies, and restarts the app using systemd.
-       - name: Deploy to EC2
+      -  name: Deploy to EC2
          run: |
            aws ssm send-command \
              --instance-ids ${{ steps.instances.outputs.ids }} \

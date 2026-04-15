@@ -47,6 +47,15 @@ resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   ip_protocol                  = "tcp"
 }
 
+resource "aws_vpc_security_group_ingress_rule" "app_ssh" {
+  security_group_id = aws_security_group.app.id
+  from_port         = 22
+  to_port           = 22
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
+  description       = "SSH access for debugging"
+}
+
 resource "aws_vpc_security_group_egress_rule" "app_to_db" {
   security_group_id            = aws_security_group.app.id
   referenced_security_group_id = aws_security_group.db.id
