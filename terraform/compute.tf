@@ -36,7 +36,7 @@ resource "aws_lb_target_group" "app" {
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
-  deregistration_delay = 30
+  deregistration_delay = 300
 
   health_check {
     path                = "/health"
@@ -81,8 +81,9 @@ resource "aws_launch_template" "app" {
   }
 
   user_data = base64encode(templatefile("${path.module}/userdata.sh", {
-    region   = var.aws_region
-    app_port = var.app_port
+    region            = var.aws_region
+    app_port          = var.app_port
+    artifact_bucket   = aws_s3_bucket.artifacts.id
   }))
 
   block_device_mappings {
