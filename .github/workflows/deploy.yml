@@ -65,7 +65,7 @@ jobs:
               "unzip -o /tmp/app.zip -d /home/ec2-user/app",
               "cd /home/ec2-user/app && npm install --production",
               "chown -R ec2-user:ec2-user /home/ec2-user/app",
-              "su - ec2-user -c \"/usr/local/bin/pm2 restart ecosystem.config.js 2>/dev/null || /usr/local/bin/pm2 start /home/ec2-user/app/ecosystem.config.js\"",
-              "su - ec2-user -c \"/usr/local/bin/pm2 save\""
+              "systemctl restart app",
+              "sleep 5 && curl -f http://localhost:8080/health || exit 1"
             ]'
           echo "Deploy command sent. App will be live in ~30 seconds."
