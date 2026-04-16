@@ -1,104 +1,98 @@
-# security.tf
-# Security Groups, KMS, IAM, S3 artifact bucket
-
-# ── Security Groups ────────────────────────────────────────
-# The chain: ALB SG → App SG → DB SG
-# Each layer can ONLY talk to the one below it.
+# ── Security Groups ───────────────────────────────────────────
+# Chain: Internet → ALB SG → App SG → DB SG
 
 resource "aws_security_group" "alb" {
   name        = "alb-sg"
-  description = "ALB accepts HTTP from internet"
+  description = "ALB: accepts HTTP from internet, sends to EC2"
   vpc_id      = aws_vpc.main.id
 }
 
 resource "aws_security_group" "app" {
-  name = "app-sg"
-  description = "App accepts HTTP from ALB, and talks to DB"
-  vpc_id = aws_vpc.main.id
+  name        = "app-sg"
+  description = "EC2: accepts traffic from ALB only"
+  vpc_id      = aws_vpc.main.id
 }
 
 resource "aws_security_group" "db" {
-  name = "db-sg"
-  description = "DB accepts MySQL from App only"
-  vpc_id = aws_vpc.main.id
+  name        = "db-sg"
+  description = "RDS: accepts MySQL from EC2 only"
+  vpc_id      = aws_vpc.main.id
 }
 
+# ALB: accept HTTP from internet
 resource "aws_vpc_security_group_ingress_rule" "alb_http" {
   security_group_id = aws_security_group.alb.id
-  from_port = 80
-  to_port   = 80
-  ip_protocol  = "tcp"
-  cidr_ipv4 = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  cidr_ipv4         = "0.0.0.0/0"
+  description       = "HTTP from internet"
 }
 
+# ALB: send to EC2 on app port
 resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
-  security_group_id = aws_security_group.alb.id
+  security_group_id            = aws_security_group.alb.id
   referenced_security_group_id = aws_security_group.app.id
-  from_port = var.app_port
-  to_port   = var.app_port
-  ip_protocol  = "tcp"
+  from_port                    = var.app_port
+  to_port                      = var.app_port
+  ip_protocol                  = "tcp"
+  description                  = "Forward to EC2"
 }
 
+# EC2: accept from ALB only
 resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
   security_group_id            = aws_security_group.app.id
   referenced_security_group_id = aws_security_group.alb.id
   from_port                    = var.app_port
   to_port                      = var.app_port
   ip_protocol                  = "tcp"
+  description                  = "From ALB only"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "app_ssh" {
-  security_group_id = aws_security_group.app.id
-  from_port         = 22
-  to_port           = 22
-  ip_protocol       = "tcp"
-  cidr_ipv4         = "0.0.0.0/0"
-  description       = "SSH access for debugging"
-}
-
+# EC2: outbound to RDS
 resource "aws_vpc_security_group_egress_rule" "app_to_db" {
   security_group_id            = aws_security_group.app.id
   referenced_security_group_id = aws_security_group.db.id
   from_port                    = 3306
   to_port                      = 3306
   ip_protocol                  = "tcp"
+  description                  = "MySQL to RDS"
 }
 
-resource "aws_vpc_security_group_egress_rule" "app_outbound_https" {
+# EC2: outbound HTTPS to AWS APIs (SSM, CloudWatch)
+# S3 traffic routes through the VPC Gateway Endpoint — no HTTPS needed for S3.
+# HTTPS here covers SSM Parameter Store and CloudWatch only.
+resource "aws_vpc_security_group_egress_rule" "app_https" {
   security_group_id = aws_security_group.app.id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
   to_port           = 443
   ip_protocol       = "tcp"
+  description       = "HTTPS to AWS APIs (SSM, CloudWatch)"
 }
 
+# EC2: outbound HTTP — needed for Node.js package installs (npm)
+# Only required if you run npm install on the instance.
+resource "aws_vpc_security_group_egress_rule" "app_http" {
+  security_group_id = aws_security_group.app.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 80
+  to_port           = 80
+  ip_protocol       = "tcp"
+  description       = "HTTP outbound for package installs"
+}
+
+# RDS: accept MySQL from EC2 only
 resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
   security_group_id            = aws_security_group.db.id
   referenced_security_group_id = aws_security_group.app.id
   from_port                    = 3306
   to_port                      = 3306
   ip_protocol                  = "tcp"
+  description                  = "MySQL from EC2 only"
 }
 
-# Allow app to resolve DNS (needed for S3 API calls and package downloads)
-resource "aws_vpc_security_group_egress_rule" "app_outbound_dns_udp" {
-  security_group_id = aws_security_group.app.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 53
-  to_port           = 53
-  ip_protocol       = "udp"
-}
-
-resource "aws_vpc_security_group_egress_rule" "app_outbound_dns_tcp" {
-  security_group_id = aws_security_group.app.id
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 53
-  to_port           = 53
-  ip_protocol       = "tcp"
-}
-
-
-# ── KMS Key ────────────────────────────────────────────────
+# ── KMS Key ───────────────────────────────────────────────────
 resource "aws_kms_key" "main" {
   description             = "Encrypts SSM secrets and RDS storage"
   deletion_window_in_days = 7
@@ -107,14 +101,13 @@ resource "aws_kms_key" "main" {
 }
 
 resource "aws_kms_alias" "main" {
-  name          = "alias/secure-3tier-app${var.suffix}"
+  name          = "alias/secure-3tier-app"
   target_key_id = aws_kms_key.main.id
 }
 
-# ── IAM Role for EC2 ───────────────────────────────────────
-# Least privilege: only what the instance actually needs.
+# ── IAM Role for EC2 ──────────────────────────────────────────
 resource "aws_iam_role" "ec2_role" {
-  name = "ec2-app-role${var.suffix}"
+  name = "ec2-app-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -126,7 +119,7 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
-# Read DB secrets from SSM (used by userdata.sh on boot)
+# SSM: read /myapp/* secrets only
 resource "aws_iam_role_policy" "ssm_secrets" {
   name = "ssm-secrets"
   role = aws_iam_role.ec2_role.id
@@ -148,7 +141,7 @@ resource "aws_iam_role_policy" "ssm_secrets" {
   })
 }
 
-# Download app artifact from S3 (used by CI/CD deploy step)
+# S3: get artifact from artifact bucket only
 resource "aws_iam_role_policy" "s3_artifact" {
   name = "s3-artifact"
   role = aws_iam_role.ec2_role.id
@@ -170,17 +163,7 @@ resource "aws_iam_role_policy" "s3_artifact" {
   })
 }
 
-resource "aws_vpc_endpoint" "s3" {
-  vpc_id            = aws_vpc.main.id
-  service_name      = "com.amazonaws.${var.aws_region}.s3"
-  vpc_endpoint_type = "Gateway"
-
-  route_table_ids = [
-    aws_route_table.public.id,   # or private if you have one
-  ]
-}
-
-# CloudWatch logs and metrics
+# CloudWatch: send logs and metrics
 resource "aws_iam_role_policy" "cloudwatch" {
   name = "cloudwatch"
   role = aws_iam_role.ec2_role.id
@@ -195,20 +178,21 @@ resource "aws_iam_role_policy" "cloudwatch" {
   })
 }
 
-# SSM core — allows CI/CD to run deploy commands on EC2 without SSH
+# SSM: allows SSM agent on EC2 to communicate with AWS SSM service
 resource "aws_iam_role_policy_attachment" "ssm_core" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "ec2-app-instance-profile${var.suffix}"
+  name = "ec2-app-instance-profile"
   role = aws_iam_role.ec2_role.name
 }
 
-# ── IAM Role for VPC Flow Logs ────────────────────────────
+# ── IAM Role for VPC Flow Logs ────────────────────────────────
 resource "aws_iam_role" "flow_logs_role" {
-  name = "vpc-flow-logs-role${var.suffix}"
+  name = "vpc-flow-logs-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -222,6 +206,7 @@ resource "aws_iam_role" "flow_logs_role" {
 resource "aws_iam_role_policy" "flow_logs_policy" {
   name = "flow-logs-policy"
   role = aws_iam_role.flow_logs_role.id
+
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -232,11 +217,9 @@ resource "aws_iam_role_policy" "flow_logs_policy" {
   })
 }
 
-# ── S3 Artifact Bucket ─────────────────────────────────────
-# CI/CD uploads the zipped app here.
-# EC2 downloads it during deployment.
+# ── S3 Artifact Bucket ────────────────────────────────────────
 resource "aws_s3_bucket" "artifacts" {
-  bucket        = "secure-3tier-artifacts${var.suffix}-${data.aws_caller_identity.current.account_id}"
+  bucket        = "secure-3tier-artifacts-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
   tags          = { Name = "app-artifacts" }
 }

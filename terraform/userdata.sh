@@ -1,69 +1,51 @@
 #!/bin/bash
-set -euo pipefail
 
-exec > >(tee /var/log/user-data.log | logger -t user-data) 2>&1
-
-echo "Bootstrap started: $(date)"
-
-dnf clean all
+# Update + install essentials
 dnf update -y
-dnf install -y aws-cli unzip
+dnf install -y aws-cli unzip nodejs
 
-# Ensure SSM agent is installed and running (needed for CI/CD deployment)
-dnf install -y amazon-ssm-agent
-systemctl enable amazon-ssm-agent
-systemctl start amazon-ssm-agent
-
-curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-dnf install -y nodejs
-
-# Terraform will inject 'region' here, but we escape the bash-specific $2
-get_param() {
-  aws ssm get-parameter --name "$1" --query "Parameter.Value" --output text --region "${region}" $${2:-}
-}
-
-echo "Fetching secrets from SSM..."
-DB_HOST=$(get_param "/myapp/db/host${suffix}")
-DB_NAME=$(get_param "/myapp/db/name${suffix}")
-DB_USER=$(get_param "/myapp/db/username${suffix}")
-DB_PASS=$(get_param "/myapp/db/password${suffix}" "--with-decryption")
-
+# App directory
 mkdir -p /home/ec2-user/app
-cat > /home/ec2-user/app/.env << EOF
+cd /home/ec2-user/app
+
+# ── Fetch secrets from SSM ─────────────────────────────
+DB_HOST=$(aws ssm get-parameter \
+  --name "/myapp/db/host" \
+  --query "Parameter.Value" --output text --region ${region})
+
+DB_NAME=$(aws ssm get-parameter \
+  --name "/myapp/db/name" \
+  --query "Parameter.Value" --output text --region ${region})
+
+DB_USER=$(aws ssm get-parameter \
+  --name "/myapp/db/username" \
+  --query "Parameter.Value" --output text --region ${region})
+
+DB_PASS=$(aws ssm get-parameter \
+  --name "/myapp/db/password" \
+  --with-decryption \
+  --query "Parameter.Value" --output text --region ${region})
+
+# ── Create .env file ───────────────────────────────────
+cat > .env << EOF
 APP_PORT=${app_port}
 NODE_ENV=production
 AWS_REGION=${region}
 DB_HOST=$DB_HOST
-DB_PORT=3306
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
 DB_PASS=$DB_PASS
 EOF
 
-chown -R ec2-user:ec2-user /home/ec2-user/app
+chmod 600 .env
 
-# Create systemd service for the Node app
-cat > /etc/systemd/system/app.service << 'EOF'
-[Unit]
-Description=Node.js Todo App
-After=network.target
+# ── Download app from S3 ───────────────────────────────
+aws s3 cp s3://${artifact_bucket}/app.zip app.zip
+unzip app.zip
+rm app.zip
 
-[Service]
-Type=simple
-User=ec2-user
-WorkingDirectory=/home/ec2-user/app
-EnvironmentFile=/home/ec2-user/app/.env
-ExecStart=/usr/bin/node server.js
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
+# ── Install dependencies ───────────────────────────────
+npm install
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-systemctl enable app.service
-
-echo "Bootstrap done: $(date). App will start on first CI/CD deploy."
+# ── Start app ───────────────────────────────────────────
+nohup node server.js > app.log 2>&1 &
