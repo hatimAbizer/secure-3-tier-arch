@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Update + install essentials
 dnf update -y
 dnf install -y aws-cli unzip nodejs
